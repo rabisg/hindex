@@ -22,6 +22,7 @@ library
   build-depends:       base >=4.7 && <4.8,
                        bytestring,
                        cereal,
+                       containers,
                        data-ordlist,
                        directory,
                        hashtables,
