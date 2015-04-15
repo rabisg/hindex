@@ -7,17 +7,19 @@ import           HIndex.FST
 import           HIndex.Term
 import           HIndex.Types
 
-import qualified Data.ByteString    as B
-import qualified Data.HashTable.IO  as HT
+import           Data.Binary.Put
+import qualified Data.ByteString.Lazy as LB
+import qualified Data.HashTable.IO    as HT
 import           Data.List
-import           Data.Serialize.Put
 import           System.IO
 
 writeSegment :: (HIndexValue a) => Segment a -> (Handle, Handle) -> IO ()
-writeSegment seg (datHandle, _) = B.hPut datHandle bs
-  where bs = runPut len `B.append` termsBS
-        len = putWord64le $ fromIntegral (B.length termsBS)
-        termsBS = B.concat $ segmentTermsBS seg
+writeSegment seg (datHandle, hintHandle) = do
+  writeIndex hintHandle (segmentIndex seg)
+  LB.hPut datHandle bs
+  where bs = runPut len `LB.append` termsBS
+        len = putWord64le $ fromIntegral (LB.length termsBS)
+        termsBS = LB.concat $ segmentTermsBS seg
 
 fromInMemorySegment :: (HIndexValue a) => Int -> InMemorySegment a -> IO (Segment a)
 fromInMemorySegment n curSeg = do
@@ -36,7 +38,7 @@ buildSegment n terms = Segment { segmentN = n
   where
     termsBS = map (runPut . putTerm) terms
     ts = scanl accum headerLength termsBS
-    accum len term = len + B.length term + word64Len
+    accum len term = len + LB.length term + word64Len
     word64Len = 8
     headerLength = 0
     termFST = buildFST $ zip termKeys ts

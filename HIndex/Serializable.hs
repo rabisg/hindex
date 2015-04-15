@@ -2,8 +2,8 @@
 {-# LANGUAGE TypeSynonymInstances #-}
 module HIndex.Serializable where
 
-import           Data.ByteString       (ByteString)
-import           Data.ByteString.Char8 (pack, unpack)
+import           Data.ByteString.Lazy       (ByteString)
+import           Data.ByteString.Lazy.Char8 (pack, unpack)
 
 class Serializable a where
   encode :: a -> ByteString

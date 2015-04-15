@@ -13,10 +13,10 @@ import           HIndex.Types
 
 import           Control.Applicative
 import           Control.Concurrent.MVar
-import qualified Data.ByteString         as B
+import           Data.Binary.Get
+import qualified Data.ByteString.Lazy    as LB
 import           Data.List.Ordered
 import qualified Data.Map                as M
-import           Data.Serialize.Get
 import           System.Directory
 import           System.IO
 import           System.Posix.Temp
@@ -62,21 +62,17 @@ flush hindex = do
     filePath = hBaseDirectory . hConfig $ hindex
     mkFilePath name ext = filePath ++ "/" ++ name ++ ext
 
-readVal :: (HIndexValue a) => FilePath -> Int -> IO [a]
+readVal :: (HIndexValue a) => FilePath -> Int64 -> IO [a]
 readVal segmentPath offset = withFile segmentPath ReadMode readVal'
   where
     readVal' :: (HIndexValue a) => Handle -> IO [a]
     readVal' handle = do
       hSeek handle AbsoluteSeek (fromIntegral offset)
-      lenBS <- B.hGet handle word64Len
-      let eitherLen = fromIntegral <$> runGet getWord64le lenBS
-      termsBS <- case eitherLen of
-       Left err -> error err
-       Right len ->  B.hGet handle len
-      let eitherTerm = runGet getTerm termsBS
-      case eitherTerm of
-       Left err -> error err
-       Right term -> return $ termValues term
+      lenBS <- LB.hGet handle word64Len
+      let len = runGet getWord64le lenBS
+      termsBS <- LB.hGet handle (fromIntegral len)
+      let term = runGet getTerm termsBS
+      return $ termValues term
       where
         word64Len = 8
 

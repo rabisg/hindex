@@ -6,14 +6,15 @@ module HIndex.Term ( getTerm
 import           HIndex.Serializable
 import           HIndex.Types
 
-import qualified Data.ByteString     as B
+import           Data.Binary.Get
+import           Data.Binary.Put
+import qualified Data.ByteString      as B
+import qualified Data.ByteString.Lazy as LB
 import           Data.Either
-import           Data.Serialize.Get
-import           Data.Serialize.Put
-import           Data.Text.Encoding
+import qualified Data.Text.Encoding   as E
 
 data PersistentTerm = PTerm { pTermKey    :: B.ByteString
-                            , pTermValues :: [B.ByteString]
+                            , pTermValues :: [LB.ByteString]
                             }
 
 
@@ -22,8 +23,7 @@ toPersistentTerm term = PTerm { pTermKey = key
                               , pTermValues =  vals
                               }
   where
-    key = encodeUtf16LE $ termKey term
-    vals :: [B.ByteString]
+    key = E.encodeUtf16LE $ termKey term
     vals = map encode $ termValues term
 
 fromPersistentTerm :: (HIndexValue a) => PersistentTerm -> Either String (Term a)
@@ -33,15 +33,24 @@ fromPersistentTerm pTerm = if null errors
                                            }
                            else Left $ head errors
   where
-    key = decodeUtf16LE $ pTermKey pTerm
+    key = E.decodeUtf16LE $ pTermKey pTerm
     decoded = partitionEithers $ map decode (pTermValues pTerm)
     errors = fst decoded
     vals = snd decoded
 
-putByteString' :: B.ByteString -> Put
+type Putter a = a -> PutM ()
+
+putByteString' :: LB.ByteString -> Put
 putByteString' b =  do
-  putWord64le $ (fromIntegral . B.length) b
-  putByteString b
+  putWord64le $ (fromIntegral . LB.length) b
+  putLazyByteString b
+
+putListOf :: Putter a -> Putter [a]
+putListOf pa = go 0 (return ())
+  where
+  go n body []     = putWord64be n >> body
+  go n body (x:xs) = n' `seq` go n' (body >> pa x) xs
+    where n' = n + 1
 
 putPTerm :: PersistentTerm -> Put
 putPTerm pTerm = do
@@ -56,10 +65,17 @@ putTerm :: (HIndexValue a) => Term a -> Put
 putTerm = putPTerm . toPersistentTerm
 
 
-getByteString' :: Get B.ByteString
+getByteString' :: Get LB.ByteString
 getByteString' = do
   size <- getWord64le
-  getByteString (fromIntegral size)
+  getLazyByteString (fromIntegral size)
+
+getListOf :: Get a -> Get [a]
+getListOf m = go [] =<< getWord64be
+  where
+  go as 0 = return (reverse as)
+  go as i = do x <- m
+               x `seq` go (x:as) (i - 1)
 
 getPTerm :: Get PersistentTerm
 getPTerm = do

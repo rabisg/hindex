@@ -4,7 +4,7 @@ module HIndex.Types where
 import           HIndex.Serializable
 
 import           Control.Concurrent.MVar
-import qualified Data.ByteString         as B
+import qualified Data.ByteString.Lazy    as LB
 import qualified Data.HashTable.IO       as HT
 import           Data.Map
 import qualified Data.Text               as T
@@ -28,8 +28,8 @@ type InMemorySegment a = HT.BasicHashTable Key [a]
 
 data Segment a = Segment { segmentN       :: Int
                          , segmentTerms   :: [Term a]
-                         , segmentTermsBS :: [B.ByteString]
                          , segmentFST     :: TermFST
+                         , segmentTermsBS :: [LB.ByteString]
                          }
 
 data HIndexConfig  = HIndexConfig { hBaseDirectory :: FilePath }
