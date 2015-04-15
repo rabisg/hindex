@@ -5,25 +5,24 @@ module HIndex.Operations ( put
                          ) where
 
 import           HIndex.Constants
-import           HIndex.FST
+import           HIndex.Index
 import           HIndex.InMemorySegment
 import           HIndex.Segment
 import           HIndex.Term
 import           HIndex.Types
 
-import           Control.Applicative
 import           Control.Concurrent.MVar
 import           Data.Binary.Get
 import qualified Data.ByteString.Lazy    as LB
 import           Data.List.Ordered
 import qualified Data.Map                as M
+import           GHC.Int                 (Int64)
 import           System.Directory
 import           System.IO
 import           System.Posix.Temp
 
 put :: (HIndexValue a) => HIndex a -> Key -> [a] -> IO ()
 put hindex k vs = withMVar (hCurSegment hindex) (\seg -> addTerm seg k (sort vs))
-
 
 mkSeg :: (HIndexValue a) =>  HIndex a -> IO (Segment a)
 mkSeg hindex = do
@@ -47,7 +46,7 @@ addActiveSeg :: HIndex a -> Segment a -> IO ()
 addActiveSeg hindex seg = modifyMVar_ activeSegments f
   where
     activeSegments = hActiveSegments hindex
-    f = return . M.insert (segmentN seg) (segmentFST seg)
+    f = return . M.insert (segmentN seg) (segmentIndex seg)
 
 -- |Flushes the in-memory index to disk
 flush :: (HIndexValue a) => HIndex a -> IO ()
@@ -76,7 +75,7 @@ readVal segmentPath offset = withFile segmentPath ReadMode readVal'
       where
         word64Len = 8
 
-getInSeg :: (HIndexValue a) => FilePath -> Key -> (Int, TermFST) -> IO [a]
+getInSeg :: (HIndexValue a) => FilePath -> Key -> (Int, TermIndex) -> IO [a]
 getInSeg basePath k (n, termFST) =
   case maybeOffset of
    Nothing -> return []

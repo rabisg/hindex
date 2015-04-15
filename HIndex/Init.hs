@@ -11,7 +11,7 @@ import           System.Directory
 getNextSegmentNum :: IO Int
 getNextSegmentNum = return 1
 
-getActiveSegments :: IO (Map Int TermFST)
+getActiveSegments :: IO (Map Int TermIndex)
 getActiveSegments = return empty
 
 initIndex :: (HIndexValue a) => HIndexConfig -> IO (HIndex a)

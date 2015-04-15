@@ -8,9 +8,13 @@ import qualified Data.ByteString.Lazy    as LB
 import qualified Data.HashTable.IO       as HT
 import           Data.Map
 import qualified Data.Text               as T
+import           Data.Trie               (Trie)
+import           GHC.Int                 (Int64)
 
--- |Placeholder. To be replaced by a concrete implementation of FST
-data TermFST = TermFST (Map Key Int)
+
+type Offset = Int64
+
+type TermIndex = Trie Offset
 
 type Key = T.Text
 
@@ -28,8 +32,8 @@ type InMemorySegment a = HT.BasicHashTable Key [a]
 
 data Segment a = Segment { segmentN       :: Int
                          , segmentTerms   :: [Term a]
-                         , segmentFST     :: TermFST
                          , segmentTermsBS :: [LB.ByteString]
+                         , segmentIndex   :: TermIndex
                          }
 
 data HIndexConfig  = HIndexConfig { hBaseDirectory :: FilePath }
@@ -37,7 +41,7 @@ data HIndexConfig  = HIndexConfig { hBaseDirectory :: FilePath }
 data HIndex a = HIndex { hConfig         :: HIndexConfig
                        , hCurSegment     :: MVar (InMemorySegment a)
                        , hCurSegmentNum  :: MVar Int
-                       , hActiveSegments :: MVar (Map Int TermFST)
+                       , hActiveSegments :: MVar (Map Int TermIndex)
                        }
 
 type HIndexValue a = (Serializable a, Ord a)
