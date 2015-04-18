@@ -1,10 +1,10 @@
-{-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies     #-}
 {-# LANGUAGE GADTs            #-}
 module HIndex.Types where
 
-import           HIndex.Serializable
-
 import           Control.Concurrent.MVar
+import           Data.Binary
 import qualified Data.ByteString.Lazy    as LB
 import qualified Data.HashTable.IO       as HT
 import           Data.Map
@@ -39,7 +39,6 @@ data Segment a = Segment { segmentN       :: Int
 
 data HIndexConfig  = HIndexConfig { hBaseDirectory :: FilePath }
 
-type HIndexValue a = (Serializable a, Ord a)
 data HIndex a where
   HIndex :: (HIndexValue a) =>
             { hConfig         :: HIndexConfig
@@ -48,3 +47,12 @@ data HIndex a where
             , hActiveSegments :: MVar (Map Int TermIndex)
             , hDeletedDocs    :: MVar [IndexId a]
             } -> HIndex a
+
+-- Ideally $Ord a$ can be derived from $HIndexValue a$
+-- However adding such an instance leads to `Overlapping Instances`
+-- issue and thus we need an additional constraint here
+class (Ord a, Binary a,
+       Ord (IndexId a), Binary (IndexId a)
+      ) => HIndexValue a where
+  type IndexId a
+  indexId :: a -> IndexId a
