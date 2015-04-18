@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds #-}
+{-# LANGUAGE GADTs            #-}
 module HIndex.Types where
 
 import           HIndex.Serializable
@@ -38,10 +39,11 @@ data Segment a = Segment { segmentN       :: Int
 
 data HIndexConfig  = HIndexConfig { hBaseDirectory :: FilePath }
 
-data HIndex a = HIndex { hConfig         :: HIndexConfig
-                       , hCurSegment     :: MVar (InMemorySegment a)
-                       , hCurSegmentNum  :: MVar Int
-                       , hActiveSegments :: MVar (Map Int TermIndex)
-                       }
-
 type HIndexValue a = (Serializable a, Ord a)
+data HIndex a where
+  HIndex :: (HIndexValue a) =>
+            { hConfig         :: HIndexConfig
+            , hCurSegment     :: MVar (InMemorySegment a)
+            , hCurSegmentNum  :: MVar Int
+            , hActiveSegments :: MVar (Map Int TermIndex)
+            } -> HIndex a
