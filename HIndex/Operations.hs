@@ -1,5 +1,6 @@
-{-# LANGUAGE ConstraintKinds #-}
-module HIndex.Operations ( put
+{-# LANGUAGE TypeFamilies #-}
+module HIndex.Operations ( delete
+                         , put
                          , flush
                          , get
                          ) where
@@ -10,13 +11,17 @@ import           HIndex.InMemorySegment
 import           HIndex.Segment
 import           HIndex.Term
 import           HIndex.Types
+import           HIndex.Util.BinaryHelper
 
 import           Control.Concurrent.MVar
+import           Data.Binary              (Binary)
+import qualified Data.Binary              as Bin (put)
 import           Data.Binary.Get
-import qualified Data.ByteString.Lazy    as LB
+import           Data.Binary.Put          (runPut)
+import qualified Data.ByteString.Lazy     as LB
 import           Data.List.Ordered
-import qualified Data.Map                as M
-import           GHC.Int                 (Int64)
+import qualified Data.Map                 as M
+import           GHC.Int                  (Int64)
 import           System.Directory
 import           System.IO
 import           System.Posix.Temp
@@ -42,6 +47,12 @@ writeSeg seg dir = do
   hClose datHandle >> hClose hintHandle
   return (datFilePath, hintFilePath)
 
+writeDeleted :: Binary a => [a] -> FilePath -> IO FilePath
+writeDeleted delDocs dir = do
+  (delFilePath, delHandle) <- mkstemp dir
+  LB.hPut delHandle $ runPut (putListOf Bin.put delDocs)
+  return delFilePath
+
 addActiveSeg :: HIndex a -> Segment a -> IO ()
 addActiveSeg hindex seg = modifyMVar_ activeSegments f
   where
@@ -52,10 +63,13 @@ addActiveSeg hindex seg = modifyMVar_ activeSegments f
 flush :: (HIndexValue a) => HIndex a -> IO ()
 flush hindex = do
   seg <- mkSeg hindex
+  deletedDocs <- readMVar (hDeletedDocs hindex)
   (datFilePath, hintFilePath) <- writeSeg seg filePath
+  delFilePath <- writeDeleted deletedDocs filePath
   let n = show $ segmentN seg
   renameFile datFilePath (mkFilePath n dataFileExtension)
   renameFile hintFilePath (mkFilePath n hintFileExtension)
+  renameFile delFilePath deletedDocsFileName
   addActiveSeg hindex seg
   where
     filePath = hBaseDirectory . hConfig $ hindex
@@ -93,3 +107,6 @@ get hindex key = do
   return $ foldl union inMemorySegVals listOfVals
   where
     filePath = hBaseDirectory . hConfig $ hindex
+
+delete :: (HIndexValue a, id ~ IndexId a) => HIndex a -> id -> IO ()
+delete hindex docId = modifyMVar_ (hDeletedDocs hindex) (return . insertSet docId)

@@ -46,4 +46,5 @@ data HIndex a where
             , hCurSegment     :: MVar (InMemorySegment a)
             , hCurSegmentNum  :: MVar Int
             , hActiveSegments :: MVar (Map Int TermIndex)
+            , hDeletedDocs    :: MVar [IndexId a]
             } -> HIndex a
