@@ -1,20 +1,18 @@
 {-# LANGUAGE FlexibleInstances    #-}
 {-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE UndecidableInstances #-}
 module HIndex.Serializable where
 
-import qualified Data.Binary                as Bin
-import           Data.ByteString.Lazy       (ByteString)
-import           Data.ByteString.Lazy.Char8 (pack, unpack)
-import           GHC.Int                    (Int64)
+import qualified Data.Binary          as Bin
+import           Data.Binary.Get      (runGetOrFail)
+import           Data.Binary.Put      (runPut)
+import           Data.ByteString.Lazy (ByteString)
 
-class Serializable a where
-  encode :: a -> ByteString
-  decode :: ByteString -> Either String a
+encode :: (Bin.Binary a) => a -> ByteString
+encode = runPut . Bin.put
 
-instance Serializable String where
-  encode = pack
-  decode = Right . unpack
-
-instance Serializable Int64 where
-  encode = Bin.encode
-  decode = Bin.decode
+decode :: (Bin.Binary a) => ByteString -> Either String a
+decode = f . runGetOrFail Bin.get
+    where
+      f (Left (_, _, str)) = Left str
+      f (Right (_, _, a)) = Right a
