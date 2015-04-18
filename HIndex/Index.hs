@@ -17,14 +17,14 @@ import           System.IO             (Handle)
 
 import           HIndex.Types
 
-class (HIndexValue a) => Index index a | index -> a where
+class Index index a | index -> a where
   buildIndex :: [(Key, a)] -> index
   getOffset  :: index -> Key -> Maybe a
   writeIndex :: Handle -> index -> IO ()
   readIndex  :: Handle -> IO index
 
 
-instance (HIndexValue a, Binary a) => Index (Trie a) a where
+instance (Binary a) => Index (Trie a) a where
   buildIndex = fromListR . map (first encodeUtf16LE)
   getOffset index key = lookup (encodeUtf16LE key) index
   writeIndex h index = hPut h (runPut . put $ index)
