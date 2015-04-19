@@ -17,9 +17,11 @@ tests = withResource init_ destroy $ \ioIndex ->
        assertBool "Base Directory does not exist" dirExists
   ]
   where
-    init_ :: IO (HIndex InvertedIndex)
+    init_ :: IO (HIndex Int TermFreq)
     init_ = do
       tmpDir <- getTemporaryDirectory
       let conf = HIndexConfig $ tmpDir </> "hindex_test"
       initIndex conf
-    destroy index = removeDirectory . hBaseDirectory . getConfig $ index
+
+    -- | Remove test files
+    destroy index = removeDirectoryRecursive . hBaseDirectory . getConfig $ index
