@@ -18,16 +18,15 @@ data PersistentTerm = PTerm { pTermKey    :: B.ByteString
                             , pTermValues :: [LB.ByteString]
                             }
 
-
-toPersistentTerm :: (HIndexValue a) => Term a -> PersistentTerm
+toPersistentTerm :: (HIndexDocId a, HIndexValue b) => Term a b -> PersistentTerm
 toPersistentTerm term = PTerm { pTermKey = key
-                              , pTermValues =  vals
+                              , pTermValues = vals
                               }
   where
     key = E.encodeUtf16LE $ termKey term
     vals = map encode $ termValues term
 
-fromPersistentTerm :: (HIndexValue a) => PersistentTerm -> Either String (Term a)
+fromPersistentTerm :: (HIndexDocId a, HIndexValue b) => PersistentTerm -> Either String (Term a b)
 fromPersistentTerm pTerm = if null errors
                            then Right Term { termKey = key
                                            , termValues = vals
@@ -48,7 +47,7 @@ putPTerm pTerm = do
     k = pTermKey pTerm
     v = pTermValues pTerm
 
-putTerm :: (HIndexValue a) => Term a -> Put
+putTerm :: (HIndexDocId a, HIndexValue b) => Term a b -> Put
 putTerm = putPTerm . toPersistentTerm
 
 getPTerm :: Get PersistentTerm
@@ -58,7 +57,7 @@ getPTerm = do
   vals <- getListOf getByteString'
   return $ PTerm key vals
 
-getTerm :: (HIndexValue a) => Get (Term a)
+getTerm :: (HIndexDocId a, HIndexValue b) => Get (Term a b)
 getTerm = do
   pTerm <- getPTerm
   case fromPersistentTerm pTerm of

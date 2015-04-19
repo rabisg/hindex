@@ -14,7 +14,7 @@ import qualified Data.HashTable.IO    as HT
 import           Data.List
 import           System.IO
 
-writeSegment :: (HIndexValue a) => Segment a -> (Handle, Handle) -> IO ()
+writeSegment :: Segment a b -> (Handle, Handle) -> IO ()
 writeSegment seg (datHandle, hintHandle) = do
   writeIndex hintHandle (segmentIndex seg)
   LB.hPut datHandle bs
@@ -22,15 +22,16 @@ writeSegment seg (datHandle, hintHandle) = do
         len = putWord64le $ fromIntegral (LB.length termsBS)
         termsBS = LB.concat $ segmentTermsBS seg
 
-fromInMemorySegment :: (HIndexValue a) => Int -> InMemorySegment a -> IO (Segment a)
+fromInMemorySegment :: (HIndexDocId a, HIndexValue b)
+                       => Int -> InMemorySegment a b -> IO (Segment a b)
 fromInMemorySegment n curSeg = do
   xs <- HT.toList curSeg
   return . buildSegment n . sort $ map toTerm xs
   where
-    toTerm :: (Key, [a]) -> Term a
     toTerm (k, v) = Term k v
 
-buildSegment ::  (HIndexValue a) => Int -> [Term a] -> Segment a
+buildSegment :: (HIndexDocId a, HIndexValue b)
+                => Int -> [Term a b] -> Segment a b
 buildSegment n terms = Segment { segmentN = n
                                , segmentTerms = terms
                                , segmentTermsBS = termsBS

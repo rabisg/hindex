@@ -1,3 +1,4 @@
+{-# LANGUAGE ConstraintKinds #-}
 module HIndex.Init (initIndex) where
 
 import           HIndex.Constants
@@ -31,7 +32,7 @@ getDeletedDocs = withFileIfExists deletedDocsFileName ReadMode getDeletedDocsFro
       bs <- LB.hGetContents h
       return $ runGet (getListOf get) bs
 
-initIndex :: (HIndexValue a) => HIndexConfig -> IO (HIndex a)
+initIndex :: (HIndexDocId a, HIndexValue b) => HIndexConfig -> IO (HIndex a b)
 initIndex config = do
   createDirectoryIfMissing True (hBaseDirectory config)
   mSeg <- newInMemorySegment >>= newMVar

@@ -1,4 +1,4 @@
-{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE ConstraintKinds #-}
 module HIndex.Operations ( delete
                          , put
                          , flush
@@ -23,13 +23,16 @@ import           Data.List.Ordered
 import qualified Data.Map                 as M
 import           GHC.Int                  (Int64)
 import           System.Directory
+import           System.FilePath.Posix    ((<.>), (</>))
 import           System.IO
 import           System.Posix.Temp
 
-put :: (HIndexValue a) => HIndex a -> Key -> [a] -> IO ()
-put hindex k vs = withMVar (hCurSegment hindex) (\seg -> addTerm seg k (sort vs))
+put :: HIndex a b -> HIndexDocument a b -> IO ()
+put hindex (HIndexDocument docId fields) = withMVar (hCurSegment hindex) f
+  where f seg = mapM_ (\(k, vs) -> addTerm seg k (TermValue docId vs)) fields
 
-mkSeg :: (HIndexValue a) =>  HIndex a -> IO (Segment a)
+
+mkSeg :: (HIndexDocId a, HIndexValue b) => HIndex a b -> IO (Segment a b)
 mkSeg hindex = do
   n <- modifyMVar curSegN (\n -> return (n+1, n))
   newSeg <- newInMemorySegment
@@ -39,7 +42,7 @@ mkSeg hindex = do
     m = hCurSegment hindex
     curSegN = hCurSegmentNum hindex
 
-writeSeg :: (HIndexValue a) => Segment a -> FilePath -> IO (FilePath, FilePath)
+writeSeg :: (HIndexValue a) => Segment a b -> FilePath -> IO (FilePath, FilePath)
 writeSeg seg dir = do
   (datFilePath, datHandle) <- mkstemp dir
   (hintFilePath, hintHandle) <- mkstemp dir
@@ -53,14 +56,14 @@ writeDeleted delDocs dir = do
   LB.hPut delHandle $ runPut (putListOf Bin.put delDocs)
   return delFilePath
 
-addActiveSeg :: HIndex a -> Segment a -> IO ()
+addActiveSeg :: HIndex a b -> Segment a b -> IO ()
 addActiveSeg hindex seg = modifyMVar_ activeSegments f
   where
     activeSegments = hActiveSegments hindex
     f = return . M.insert (segmentN seg) (segmentIndex seg)
 
 -- |Flushes the in-memory index to disk
-flush :: (HIndexValue a) => HIndex a -> IO ()
+flush :: (HIndexDocId a, HIndexValue b) => HIndex a b -> IO ()
 flush hindex = do
   seg <- mkSeg hindex
   deletedDocs <- readMVar (hDeletedDocs hindex)
@@ -75,10 +78,10 @@ flush hindex = do
     filePath = hBaseDirectory . hConfig $ hindex
     mkFilePath name ext = filePath ++ "/" ++ name ++ ext
 
-readVal :: (HIndexValue a) => FilePath -> Int64 -> IO [a]
+readVal :: (HIndexDocId a, HIndexValue b) => FilePath -> Int64 -> IO [TermValue a b]
 readVal segmentPath offset = withFile segmentPath ReadMode readVal'
   where
-    readVal' :: (HIndexValue a) => Handle -> IO [a]
+    readVal' :: (HIndexDocId a, HIndexValue b) => Handle -> IO [TermValue a b]
     readVal' handle = do
       hSeek handle AbsoluteSeek (fromIntegral offset)
       lenBS <- LB.hGet handle word64Len
@@ -89,7 +92,7 @@ readVal segmentPath offset = withFile segmentPath ReadMode readVal'
       where
         word64Len = 8
 
-getInSeg :: (HIndexValue a) => FilePath -> Key -> (Int, TermIndex) -> IO [a]
+getInSeg :: (HIndexDocId a, HIndexValue b) => FilePath -> Key -> (Int, TermIndex) -> IO [TermValue a b]
 getInSeg basePath k (n, termFST) =
   case maybeOffset of
    Nothing -> return []
@@ -98,7 +101,7 @@ getInSeg basePath k (n, termFST) =
     maybeOffset = getOffset termFST k
     segmentFile = basePath ++ "/" ++ show n ++ dataFileExtension
 
-get :: (HIndexValue a) => HIndex a -> Key -> IO [a]
+get :: (HIndexDocId a, HIndexValue b) => HIndex a b -> Key -> IO [TermValue a b]
 get hindex key = do
   activeSegments <- readMVar $ hActiveSegments hindex
   curSeg <- readMVar $ hCurSegment hindex
@@ -108,5 +111,5 @@ get hindex key = do
   where
     filePath = hBaseDirectory . hConfig $ hindex
 
-delete :: (HIndexValue a, id ~ IndexId a) => HIndex a -> id -> IO ()
+delete :: (HIndexDocId a) => HIndex a b -> a -> IO ()
 delete hindex docId = modifyMVar_ (hDeletedDocs hindex) (return . insertSet docId)
