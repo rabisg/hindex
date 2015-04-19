@@ -1,10 +1,10 @@
 module HIndex.Constants where
 
 dataFileExtension :: String
-dataFileExtension = ".dat"
+dataFileExtension = "dat"
 
 hintFileExtension :: String
-hintFileExtension = ".hint"
+hintFileExtension = "hint"
 
 deletedDocsFileName :: String
 deletedDocsFileName = "deleted"

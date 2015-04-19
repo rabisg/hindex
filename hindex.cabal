@@ -37,6 +37,7 @@ library
                        containers,
                        data-ordlist,
                        directory,
+                       filepath,
                        hashtables,
                        text,
                        unix

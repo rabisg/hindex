@@ -54,6 +54,7 @@ writeDeleted :: Binary a => [a] -> FilePath -> IO FilePath
 writeDeleted delDocs dir = do
   (delFilePath, delHandle) <- mkstemp dir
   LB.hPut delHandle $ runPut (putListOf Bin.put delDocs)
+  hClose delHandle
   return delFilePath
 
 addActiveSeg :: HIndex a b -> Segment a b -> IO ()
@@ -67,16 +68,16 @@ flush :: (HIndexDocId a, HIndexValue b) => HIndex a b -> IO ()
 flush hindex = do
   seg <- mkSeg hindex
   deletedDocs <- readMVar (hDeletedDocs hindex)
-  (datFilePath, hintFilePath) <- writeSeg seg filePath
-  delFilePath <- writeDeleted deletedDocs filePath
+  (datFilePath, hintFilePath) <- writeSeg seg baseDir
+  delFilePath <- writeDeleted deletedDocs baseDir
   let n = show $ segmentN seg
   renameFile datFilePath (mkFilePath n dataFileExtension)
   renameFile hintFilePath (mkFilePath n hintFileExtension)
-  renameFile delFilePath deletedDocsFileName
+  renameFile delFilePath $ baseDir </> deletedDocsFileName
   addActiveSeg hindex seg
   where
-    filePath = hBaseDirectory . hConfig $ hindex
-    mkFilePath name ext = filePath ++ "/" ++ name ++ ext
+    baseDir = hBaseDirectory . hConfig $ hindex
+    mkFilePath name ext = baseDir </> name <.> ext
 
 readVal :: (HIndexDocId a, HIndexValue b) => FilePath -> Int64 -> IO [TermValue a b]
 readVal segmentPath offset = withFile segmentPath ReadMode readVal'
@@ -99,7 +100,7 @@ getInSeg basePath k (n, termFST) =
    Just offset -> readVal segmentFile offset
   where
     maybeOffset = getOffset termFST k
-    segmentFile = basePath ++ "/" ++ show n ++ dataFileExtension
+    segmentFile = basePath </> show n <.> dataFileExtension
 
 get :: (HIndexDocId a, HIndexValue b) => HIndex a b -> Key -> IO [TermValue a b]
 get hindex key = do
