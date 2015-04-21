@@ -93,22 +93,24 @@ readVal segmentPath offset = withFile segmentPath ReadMode readVal'
       where
         word64Len = 8
 
-getInSeg :: (HIndexDocId a, HIndexValue b) => FilePath -> Key -> (Int, TermIndex) -> IO [TermValue a b]
-getInSeg basePath k (n, termFST) =
-  case maybeOffset of
-   Nothing -> return []
-   Just offset -> readVal segmentFile offset
+getInSeg :: (HIndexDocId a, HIndexValue b) => FilePath -> Key ->
+            Int -> TermIndex -> IO [TermValue a b] -> IO [TermValue a b]
+getInSeg basePath key segNum termIndex res = do
+  xs <- res
+  xs' <- case maybeOffset of
+    Nothing -> return []
+    Just offset -> readVal segmentFile offset
+  return $ xs ++ xs'
   where
-    maybeOffset = getOffset termFST k
-    segmentFile = basePath </> show n <.> dataFileExtension
+    maybeOffset = getOffset termIndex key
+    segmentFile = basePath </> show segNum <.> dataFileExtension
 
 get :: (HIndexDocId a, HIndexValue b) => HIndex a b -> Key -> IO [TermValue a b]
 get hindex key = do
   activeSegments <- readMVar $ hActiveSegments hindex
   curSeg <- readMVar $ hCurSegment hindex
-  listOfVals <- mapM (getInSeg filePath key) (M.toList activeSegments)
-  inMemorySegVals <- queryTerm curSeg key
-  return $ foldl union inMemorySegVals listOfVals
+  let inMemorySegVals = queryTerm curSeg key
+  M.foldrWithKey' (getInSeg filePath key) inMemorySegVals activeSegments
   where
     filePath = hBaseDirectory . hConfig $ hindex
 
