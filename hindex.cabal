@@ -28,7 +28,8 @@ library
     HIndex.Serializable,
     HIndex.Term,
     HIndex.Types,
-    HIndex.Util.BinaryHelper
+    HIndex.Util.BinaryHelper,
+    HIndex.Util.IOHelper
   -- other-extensions:
   build-depends:       base >=4.7 && <4.8,
                        binary,
