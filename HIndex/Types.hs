@@ -1,7 +1,8 @@
-{-# LANGUAGE ConstraintKinds  #-}
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TypeFamilies     #-}
-{-# LANGUAGE GADTs            #-}
+{-# LANGUAGE ConstraintKinds    #-}
+{-# LANGUAGE FlexibleContexts   #-}
+{-# LANGUAGE TypeFamilies       #-}
+{-# LANGUAGE GADTs              #-}
+{-# LANGUAGE StandaloneDeriving #-}
 module HIndex.Types where
 
 import           Control.Concurrent.MVar
@@ -24,8 +25,7 @@ data TermValue a b where
   TermValue :: (HIndexDocId a, HIndexValue b) =>
                a -> b -> TermValue a b
 
-instance (Show a, Show b) => Show (TermValue a b) where
-  show (TermValue a b) = "Id = " ++ show a ++ " Value = " ++ show b
+deriving instance (Show a, Show b) => Show (TermValue a b)
 
 instance Eq (TermValue a b) where
   (TermValue a _) == (TermValue a' _) = a == a'
@@ -46,6 +46,8 @@ data Term a b where
           , termValues :: [TermValue a b]
           } -> Term a b
 
+deriving instance (Show a, Show b) => Show (Term a b)
+
 instance Eq (Term a b) where
   lhs == rhs = termKey lhs == termKey rhs
 
@@ -59,7 +61,7 @@ data Segment a b = Segment { segmentN       :: Int
                            , segmentTerms   :: [Term a b]
                            , segmentTermsBS :: [LB.ByteString]
                            , segmentIndex   :: TermIndex
-                           }
+                           } deriving (Show)
 
 data HIndexConfig  = HIndexConfig { hBaseDirectory :: FilePath }
 
