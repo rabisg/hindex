@@ -9,7 +9,7 @@ import           Control.Concurrent.MVar
 import           Data.Binary
 import qualified Data.ByteString.Lazy    as LB
 import qualified Data.HashTable.IO       as HT
-import           Data.Map
+import           Data.Map.Strict
 import qualified Data.Text               as T
 import           Data.Trie               (Trie)
 import           GHC.Int                 (Int64)
