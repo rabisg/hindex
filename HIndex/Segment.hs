@@ -4,23 +4,22 @@ module HIndex.Segment ( writeSegment
                       ) where
 
 import           HIndex.Index
-import           HIndex.Serializable  ()
 import           HIndex.Term
 import           HIndex.Types
+import           HIndex.Util.BinaryHelper
 
 import           Data.Binary.Put
-import qualified Data.ByteString.Lazy as LB
-import qualified Data.HashTable.IO    as HT
+import qualified Data.ByteString.Lazy     as LB
+import qualified Data.HashTable.IO        as HT
 import           Data.List
 import           System.IO
 
 writeSegment :: Segment a b -> (Handle, Handle) -> IO ()
 writeSegment seg (datHandle, hintHandle) = do
   writeIndex hintHandle (segmentIndex seg)
-  LB.hPut datHandle bs
-  where bs = runPut len `LB.append` termsBS
-        len = putWord64le $ fromIntegral (LB.length termsBS)
-        termsBS = LB.concat $ segmentTermsBS seg
+  LB.hPut datHandle (LB.concat bs)
+  where
+    bs = map (runPut . putByteString') (segmentTermsBS seg)
 
 fromInMemorySegment :: (HIndexDocId a, HIndexValue b)
                        => Int -> InMemorySegment a b -> IO (Segment a b)
