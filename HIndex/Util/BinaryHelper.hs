@@ -14,7 +14,7 @@ putByteString' b =  do
 putListOf :: Putter a -> Putter [a]
 putListOf pa = go 0 (return ())
   where
-  go n body []     = putWord64be n >> body
+  go n body []     = putWord64le n >> body
   go n body (x:xs) = n' `seq` go n' (body >> pa x) xs
     where n' = n + 1
 
@@ -25,7 +25,7 @@ getByteString' = do
   getLazyByteString (fromIntegral size)
 
 getListOf :: Get a -> Get [a]
-getListOf m = go [] =<< getWord64be
+getListOf m = go [] =<< getWord64le
   where
   go as 0 = return (reverse as)
   go as i = do x <- m
