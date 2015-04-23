@@ -10,7 +10,8 @@ import           HIndex.Util.IOHelper
 
 import           Control.Concurrent.MVar
 import           Data.Binary              (Binary, get)
-import           Data.Binary.Get          (runGet)
+import           Data.Binary.Get          (Decoder (..), pushChunks,
+                                           runGetIncremental)
 import qualified Data.ByteString.Lazy     as LB
 import           Data.Map.Strict          (Map, fromList)
 import           System.Directory
@@ -36,7 +37,9 @@ getDeletedDocs = withFileIfExists deletedDocsFileName [] ReadMode getDeletedDocs
   where
     getDeletedDocsFromHandle h = do
       bs <- LB.hGetContents h
-      return $ runGet (getListOf get) bs
+      case runGetIncremental (getListOf get) `pushChunks` bs of
+       Done _ _ xs -> return xs
+       _ -> fail "Could not read Deleted Documents"
 
 initIndex :: (HIndexDocId a, HIndexValue b) => HIndexConfig -> IO (HIndex a b)
 initIndex config = do
