@@ -17,7 +17,8 @@ cabal-version:       >=1.10
 
 library
   exposed-modules:
-    HIndex
+    HIndex,
+    HIndex.Internal
   other-modules:
     HIndex.Constants,
     HIndex.Index,
