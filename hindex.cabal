@@ -23,6 +23,7 @@ library
     HIndex.Index,
     HIndex.Init,
     HIndex.InMemorySegment,
+    HIndex.Metadata,
     HIndex.Operations,
     HIndex.Segment,
     HIndex.Serializable,

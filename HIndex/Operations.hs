@@ -8,6 +8,7 @@ module HIndex.Operations ( delete
 import           HIndex.Constants
 import           HIndex.Index
 import           HIndex.InMemorySegment
+import           HIndex.Metadata
 import           HIndex.Segment
 import           HIndex.Term
 import           HIndex.Types
@@ -20,7 +21,7 @@ import           Data.Binary.Get
 import           Data.Binary.Put          (runPut)
 import qualified Data.ByteString.Lazy     as LB
 import           Data.List.Ordered
-import qualified Data.Map                 as M
+import qualified Data.Map.Strict          as M
 import           GHC.Int                  (Int64)
 import           System.Directory
 import           System.FilePath.Posix    ((<.>), (</>))
@@ -41,6 +42,16 @@ mkSeg hindex = do
   where
     m = hCurSegment hindex
     curSegN = hCurSegmentNum hindex
+
+-- | Should be called after mkSeg
+-- TODO: Find a way to do $mkSeg$ and $mkMetadata$ atomically
+mkMetadata :: HIndex a b -> IO Metadata
+mkMetadata hindex = do
+  activeSegs <- readMVar $ hActiveSegments hindex
+  segN <- readMVar $ hCurSegmentNum hindex
+  return Metadata { metaNextSegN = segN
+                  , metaActiveSegs = M.keys activeSegs
+                  }
 
 writeSeg :: (HIndexValue a) => Segment a b -> FilePath -> IO (FilePath, FilePath)
 writeSeg seg dir = do
@@ -75,8 +86,12 @@ flush hindex = do
   renameFile hintFilePath (mkFilePath n hintFileExtension)
   renameFile delFilePath $ baseDir </> deletedDocsFileName
   addActiveSeg hindex seg
+  -- | Write the metadata
+  metadata <- mkMetadata hindex
+  writeMetadata config metadata
   where
-    baseDir = hBaseDirectory . hConfig $ hindex
+    config = hConfig hindex
+    baseDir = hBaseDirectory config
     mkFilePath name ext = baseDir </> name <.> ext
 
 readVal :: (HIndexDocId a, HIndexValue b) => FilePath -> Int64 -> IO [TermValue a b]

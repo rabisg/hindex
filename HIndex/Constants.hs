@@ -8,3 +8,6 @@ hintFileExtension = "hint"
 
 deletedDocsFileName :: String
 deletedDocsFileName = "deleted"
+
+metadataFileName :: String
+metadataFileName = "metadata"
