@@ -4,13 +4,12 @@ module HIndex.Segment ( writeSegment
                       ) where
 
 import           HIndex.Index
-import           HIndex.Term
 import           HIndex.Types
-import           HIndex.Util.BinaryHelper
 
-import           Data.Binary.Put
-import qualified Data.ByteString.Lazy     as LB
-import qualified Data.HashTable.IO        as HT
+import           Data.Binary          (put)
+import           Data.Binary.Put      (putWord64le, runPut)
+import qualified Data.ByteString.Lazy as LB
+import qualified Data.HashTable.IO    as HT
 import           Data.List
 import           System.IO
 
@@ -19,7 +18,9 @@ writeSegment seg (datHandle, hintHandle) = do
   writeIndex hintHandle (segmentIndex seg)
   LB.hPut datHandle (LB.concat bs)
   where
-    bs = map (runPut . putByteString') (segmentTermsBS seg)
+    bs = zipWith LB.append len termsBS
+    len = map (runPut . putWord64le . fromIntegral . LB.length) termsBS
+    termsBS = segmentTermsBS seg
 
 fromInMemorySegment :: (HIndexDocId a, HIndexValue b)
                        => Int -> InMemorySegment a b -> IO (Segment a b)
@@ -37,7 +38,7 @@ buildSegment n terms = Segment { segmentN = n
                                , segmentIndex = termIndex
                                }
   where
-    termsBS = map (runPut . putTerm) terms
+    termsBS = map (runPut . put) terms
     ts = scanl accum headerLength termsBS
     accum len term = len + LB.length term + word64Len
     word64Len = 8

@@ -17,7 +17,6 @@ import           HIndex.Util.BinaryHelper
 import           Control.Concurrent.MVar
 import           Data.Binary              (Binary)
 import qualified Data.Binary              as Bin (put)
-import           Data.Binary.Get
 import           Data.Binary.Put          (runPut)
 import qualified Data.ByteString.Lazy     as LB
 import           Data.List.Ordered
@@ -100,13 +99,8 @@ readVal segmentPath offset = withFile segmentPath ReadMode readVal'
     readVal' :: (HIndexDocId a, HIndexValue b) => Handle -> IO [TermValue a b]
     readVal' handle = do
       hSeek handle AbsoluteSeek (fromIntegral offset)
-      lenBS <- LB.hGet handle word64Len
-      let len = runGet getWord64le lenBS
-      termsBS <- LB.hGet handle (fromIntegral len)
-      let term = runGet getTerm termsBS
+      term <- readTerm handle
       return $ termValues term
-      where
-        word64Len = 8
 
 getInSeg :: (HIndexDocId a, HIndexValue b) => FilePath -> Key ->
             Int -> TermIndex -> IO [TermValue a b] -> IO [TermValue a b]

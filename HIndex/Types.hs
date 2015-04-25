@@ -1,10 +1,16 @@
-{-# LANGUAGE ConstraintKinds    #-}
-{-# LANGUAGE FlexibleContexts   #-}
-{-# LANGUAGE TypeFamilies       #-}
-{-# LANGUAGE GADTs              #-}
-{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE ConstraintKinds      #-}
+{-# LANGUAGE FlexibleContexts     #-}
+{-# LANGUAGE RecordWildCards      #-}
+{-# LANGUAGE TypeFamilies         #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE GADTs                #-}
+{-# LANGUAGE StandaloneDeriving   #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 module HIndex.Types where
 
+import           HIndex.Util.BinaryHelper
+
+import           Control.Applicative     ((<$>))
 import           Control.Concurrent.MVar
 import           Data.Binary
 import qualified Data.ByteString.Lazy    as LB
@@ -13,13 +19,17 @@ import           Data.Map.Strict
 import qualified Data.Text               as T
 import           Data.Trie               (Trie)
 import           GHC.Int                 (Int64)
-
+import qualified Data.Text.Encoding      as E
 
 type Offset = Int64
 
 type TermIndex = Trie Offset
 
 type Key = T.Text
+
+instance Binary Key where
+    put = put . E.encodeUtf8
+    get = E.decodeUtf8 <$> get
 
 data TermValue a b where
   TermValue :: (HIndexDocId a, HIndexValue b) =>
@@ -47,6 +57,13 @@ data Term a b where
           } -> Term a b
 
 deriving instance (Show a, Show b) => Show (Term a b)
+
+instance (HIndexDocId a, HIndexValue b) => Binary (Term a b) where
+  put Term{..} = put termKey >> putListOf put termValues
+  get = do
+    key <- get
+    values <- getListOf get
+    return $ Term key values
 
 instance Eq (Term a b) where
   lhs == rhs = termKey lhs == termKey rhs

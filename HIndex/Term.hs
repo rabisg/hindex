@@ -1,65 +1,18 @@
 {-# LANGUAGE ConstraintKinds #-}
-module HIndex.Term ( getTerm
-                   , putTerm
-                   ) where
+module HIndex.Term (readTerm) where
 
-import           HIndex.Serializable
 import           HIndex.Types
-import           HIndex.Util.BinaryHelper
 
-import           Data.Binary.Get
-import           Data.Binary.Put
-import qualified Data.ByteString          as B
-import qualified Data.ByteString.Lazy     as LB
-import           Data.Either
-import qualified Data.Text.Encoding       as E
+import           Data.Binary          (get)
+import           Data.Binary.Get      (getWord64le, runGet)
+import qualified Data.ByteString.Lazy as LB
+import           System.IO            (Handle)
 
-data PersistentTerm = PTerm { pTermKey    :: B.ByteString
-                            , pTermValues :: [LB.ByteString]
-                            }
-
-toPersistentTerm :: (HIndexDocId a, HIndexValue b) => Term a b -> PersistentTerm
-toPersistentTerm term = PTerm { pTermKey = key
-                              , pTermValues = vals
-                              }
+readTerm :: (HIndexDocId a, HIndexValue b) => Handle -> IO (Term a b)
+readTerm handle = do
+  lenBS <- LB.hGet handle word64Len
+  let len = runGet getWord64le lenBS
+  termsBS <- LB.hGet handle (fromIntegral len)
+  return $ runGet get termsBS
   where
-    key = E.encodeUtf16LE $ termKey term
-    vals = map encode $ termValues term
-
-fromPersistentTerm :: (HIndexDocId a, HIndexValue b) => PersistentTerm -> Either String (Term a b)
-fromPersistentTerm pTerm = if null errors
-                           then Right Term { termKey = key
-                                           , termValues = vals
-                                           }
-                           else Left $ head errors
-  where
-    key = E.decodeUtf16LE $ pTermKey pTerm
-    decoded = partitionEithers $ map decode (pTermValues pTerm)
-    errors = fst decoded
-    vals = snd decoded
-
-putPTerm :: PersistentTerm -> Put
-putPTerm pTerm = do
-  putWord32le $ (fromIntegral . B.length) k
-  putByteString k
-  putListOf putByteString' v
-  where
-    k = pTermKey pTerm
-    v = pTermValues pTerm
-
-putTerm :: (HIndexDocId a, HIndexValue b) => Term a b -> Put
-putTerm = putPTerm . toPersistentTerm
-
-getPTerm :: Get PersistentTerm
-getPTerm = do
-  keySize <- getWord32le
-  key <- getByteString (fromIntegral keySize)
-  vals <- getListOf getByteString'
-  return $ PTerm key vals
-
-getTerm :: (HIndexDocId a, HIndexValue b) => Get (Term a b)
-getTerm = do
-  pTerm <- getPTerm
-  case fromPersistentTerm pTerm of
-   Left err -> fail err
-   Right term -> return term
+    word64Len = 8
