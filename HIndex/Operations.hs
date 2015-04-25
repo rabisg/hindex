@@ -125,7 +125,10 @@ get hindex key = do
   activeSegments <- readMVar $ hActiveSegments hindex
   curSeg <- readMVar $ hCurSegment hindex
   let inMemorySegVals = queryTerm curSeg key
-  M.foldrWithKey' (getInSeg filePath key) inMemorySegVals activeSegments
+  vals <- M.foldrWithKey' (getInSeg filePath key) inMemorySegVals activeSegments
+  deletedDocIds <- readMVar $ hDeletedDocs hindex
+  let deletedDocs = map (`TermValue` undefined) deletedDocIds
+  return $ vals `minus` deletedDocs
   where
     filePath = hBaseDirectory . hConfig $ hindex
 
