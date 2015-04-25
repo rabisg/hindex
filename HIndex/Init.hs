@@ -32,8 +32,9 @@ getActiveSegments baseDir metadata = do
     activeSegsN = metaActiveSegs metadata
     mkFilePath n = baseDir </> show n <.> hintFileExtension
 
-getDeletedDocs :: (Binary a) => IO [a]
-getDeletedDocs = withFileIfExists deletedDocsFileName [] ReadMode getDeletedDocsFromHandle
+getDeletedDocs :: (Binary a) => FilePath -> IO [a]
+getDeletedDocs baseDir =
+  withFileIfExists (baseDir </> deletedDocsFileName) [] ReadMode getDeletedDocsFromHandle
   where
     getDeletedDocsFromHandle h = do
       bs <- LB.hGetContents h
@@ -48,7 +49,7 @@ initIndex config = do
   metadata <- readMetadata config
   mSegN <- newMVar $ metaNextSegN metadata
   mActiveSegments <- getActiveSegments baseDir metadata >>= newMVar
-  mDeletedDocs <- getDeletedDocs >>= newMVar
+  mDeletedDocs <- getDeletedDocs baseDir >>= newMVar
   return HIndex { hConfig = config
                 , hCurSegment = mSeg
                 , hCurSegmentNum = mSegN
