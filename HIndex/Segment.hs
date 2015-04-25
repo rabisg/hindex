@@ -16,7 +16,7 @@ import           System.IO
 writeSegment :: Segment a b -> (Handle, Handle) -> IO ()
 writeSegment seg (datHandle, hintHandle) = do
   writeIndex hintHandle (segmentIndex seg)
-  LB.hPut datHandle (LB.concat bs)
+  mapM_ (LB.hPut datHandle) bs
   where
     bs = zipWith LB.append len termsBS
     len = map (runPut . putWord64le . fromIntegral . LB.length) termsBS
