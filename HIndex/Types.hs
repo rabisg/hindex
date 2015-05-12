@@ -10,7 +10,7 @@ module HIndex.Types where
 
 import           HIndex.Util.BinaryHelper
 
-import           Control.Applicative     ((<$>))
+import           Control.Applicative     ((<$>), (<*>))
 import           Control.Concurrent.MVar
 import           Data.Binary
 import qualified Data.ByteString.Lazy    as LB
@@ -45,10 +45,7 @@ instance Ord (TermValue a b) where
 
 instance (HIndexDocId a, HIndexValue b) => Binary (TermValue a b) where
   put (TermValue a b) = put a >> put b
-  get = do
-    a <- get
-    b <- get
-    return $ TermValue a b
+  get = TermValue <$> get <*> get
 
 
 data Term a b where
@@ -60,10 +57,7 @@ deriving instance (Show a, Show b) => Show (Term a b)
 
 instance (HIndexDocId a, HIndexValue b) => Binary (Term a b) where
   put Term{..} = put termKey >> putListOf put termValues
-  get = do
-    key <- get
-    values <- getListOf get
-    return $ Term key values
+  get = Term <$> get <*> getListOf get
 
 instance Eq (Term a b) where
   lhs == rhs = termKey lhs == termKey rhs
