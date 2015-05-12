@@ -44,7 +44,8 @@ library
                        filepath,
                        hashtables,
                        text,
-                       unix
+                       unix,
+                       uuid >=1.3
 
   ghc-options: -Wall -funbox-strict-fields -O2 -fwarn-tabs
   -- hs-source-dirs:
