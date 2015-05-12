@@ -4,6 +4,7 @@ module HIndex ( delete
               , flush
               , get
               , getConfig
+              , merge
               , HIndexConfig(..)
               , HIndex()
               , HIndexValue
@@ -12,6 +13,7 @@ module HIndex ( delete
               ) where
 
 import           HIndex.Init
+import           HIndex.Merge
 import           HIndex.Operations
 import           HIndex.Types
 

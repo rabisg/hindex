@@ -24,6 +24,7 @@ library
     HIndex.Index,
     HIndex.Init,
     HIndex.InMemorySegment,
+    HIndex.Merge,
     HIndex.Metadata,
     HIndex.Operations,
     HIndex.Segment,
